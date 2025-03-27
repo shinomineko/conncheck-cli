@@ -1,14 +1,19 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 )
 
-var connTimeout time.Duration
+var (
+	connTimeout time.Duration
+	httpsVerify bool
+)
 
 func main() {
 	connType, exists := os.LookupEnv("CONN_TYPE")
@@ -38,6 +43,18 @@ func main() {
 		connTimeout = time.Duration(timeoutInt) * time.Second
 	}
 
+	httpsVerifyStr, exists := os.LookupEnv("HTTPS_VERIFY")
+	if !exists {
+		httpsVerify = true
+	} else {
+		var err error
+		httpsVerify, err = strconv.ParseBool(httpsVerifyStr)
+		if err != nil {
+			fmt.Printf("invalid value: %s\n", httpsVerifyStr)
+			os.Exit(1)
+		}
+	}
+
 	addr := fmt.Sprintf("%s:%s", destHost, destPort)
 	fmt.Printf("testing %s connection to %s\n", connType, addr)
 
@@ -46,6 +63,10 @@ func main() {
 		testTCP(addr)
 	case "udp":
 		testUDP(addr)
+	case "http":
+		testHTTP(addr, false)
+	case "https":
+		testHTTP(addr, true)
 	default:
 		fmt.Printf("unsupported connection type: %s\n", connType)
 		os.Exit(1)
@@ -73,4 +94,38 @@ func testUDP(addr string) {
 
 	// udp doesn't establish connection, so just test if we can create socket
 	fmt.Printf("socket creation successful\n")
+}
+
+func testHTTP(addr string, isHTTPS bool) {
+	var url string
+	if isHTTPS {
+		url = "https://" + addr
+	} else {
+		url = "http://" + addr
+	}
+
+	client := &http.Client{
+		Timeout: connTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: !httpsVerify,
+			},
+		},
+	}
+
+	req, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		fmt.Printf("failed to create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("connection failed: %s\n", err)
+		os.Exit(1)
+	}
+
+	defer resp.Body.Close()
+
+	fmt.Printf("connection successful: %s %s\n", resp.Proto, resp.Status)
 }
