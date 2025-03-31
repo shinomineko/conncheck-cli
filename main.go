@@ -16,6 +16,10 @@ var (
 )
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
+		printHelp()
+	}
+
 	connType, exists := os.LookupEnv("CONN_TYPE")
 	if !exists {
 		connType = "tcp"
@@ -33,7 +37,7 @@ func main() {
 
 	timeoutStr, exists := os.LookupEnv("CONN_TIMEOUT")
 	if !exists {
-		connTimeout = 10 * time.Second
+		connTimeout = 5 * time.Second
 	} else {
 		timeoutInt, err := strconv.Atoi(timeoutStr)
 		if err != nil {
@@ -128,4 +132,19 @@ func testHTTP(addr string, isHTTPS bool) {
 	defer resp.Body.Close()
 
 	fmt.Printf("connection successful: %s %s\n", resp.Proto, resp.Status)
+}
+
+func printHelp() {
+	fmt.Println("environment variables:")
+	fmt.Println("  CONN_TYPE     connection type: tcp, udp, http, https (default: tcp)")
+	fmt.Println("  DEST_HOST     destination hostname or IP (default: localhost)")
+	fmt.Println("  DEST_PORT     destination port number (default: 80)")
+	fmt.Println("  CONN_TIMEOUT  connection timeout in seconds (default: 5)")
+	fmt.Println("  HTTPS_VERIFY  verify HTTPS certificates (default: true)")
+	fmt.Println("")
+	fmt.Println("exit codes:")
+	fmt.Println("  0  connection successful")
+	fmt.Println("  1  connection failed")
+	fmt.Println("")
+	os.Exit(0)
 }
