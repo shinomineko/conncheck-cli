@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,9 +17,20 @@ var (
 )
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
-		printHelp()
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "environment variables:\n")
+		fmt.Fprintf(os.Stderr, "  CONN_TYPE     connection type: tcp, udp, http, https (default: tcp)\n")
+		fmt.Fprintf(os.Stderr, "  DEST_HOST     destination hostname or IP (default: localhost)\n")
+		fmt.Fprintf(os.Stderr, "  DEST_PORT     destination port number (default: 80)\n")
+		fmt.Fprintf(os.Stderr, "  CONN_TIMEOUT  connection timeout in seconds (default: 5)\n")
+		fmt.Fprintf(os.Stderr, "  HTTPS_VERIFY  verify HTTPS certificates (default: true)\n")
+		fmt.Fprintf(os.Stderr, "exit codes:\n")
+		fmt.Fprintf(os.Stderr, "  0  connection successful\n")
+		fmt.Fprintf(os.Stderr, "  1  connection failed\n")
+		flag.PrintDefaults()
 	}
+
+	flag.Parse()
 
 	connType, exists := os.LookupEnv("CONN_TYPE")
 	if !exists {
@@ -132,19 +144,4 @@ func testHTTP(addr string, isHTTPS bool) {
 	defer resp.Body.Close()
 
 	fmt.Printf("connection successful: %s %s\n", resp.Proto, resp.Status)
-}
-
-func printHelp() {
-	fmt.Println("environment variables:")
-	fmt.Println("  CONN_TYPE     connection type: tcp, udp, http, https (default: tcp)")
-	fmt.Println("  DEST_HOST     destination hostname or IP (default: localhost)")
-	fmt.Println("  DEST_PORT     destination port number (default: 80)")
-	fmt.Println("  CONN_TIMEOUT  connection timeout in seconds (default: 5)")
-	fmt.Println("  HTTPS_VERIFY  verify HTTPS certificates (default: true)")
-	fmt.Println("")
-	fmt.Println("exit codes:")
-	fmt.Println("  0  connection successful")
-	fmt.Println("  1  connection failed")
-	fmt.Println("")
-	os.Exit(0)
 }
